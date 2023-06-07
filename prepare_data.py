@@ -26,8 +26,14 @@ def copy_set(folder_names, set_label):
 
         print("Copying " + set_label)
         for pic_A, pic_B in zip(pics_A, pics_B):
-            shutil.copy(pic_A, os.path.join(destination, "A", set_label))
-            shutil.copy(pic_B, os.path.join(destination, "B", set_label))
+            filename = pic_A.split("/")[-1]
+            if "-" in filename:
+                dst_filename = filename.split("-")[-1]
+            else
+                dst_filename = filename.split("_")[-1]
+
+            shutil.copy(pic_A, os.path.join(destination, "A", set_label, dst_filename))
+            shutil.copy(pic_B, os.path.join(destination, "B", set_label, dst_filename))
 
 
 copy_set(train_mice, "train")
