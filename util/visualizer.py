@@ -6,6 +6,9 @@ import time
 from . import util, html
 from subprocess import Popen, PIPE
 
+import cv2
+import math
+
 
 try:
     import wandb
@@ -112,6 +115,18 @@ class Visualizer():
         print('Command: %s' % cmd)
         Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 
+    def gamma_correction(img):
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        mid = 0.5
+        mean = np.mean(gray)
+        gamma = math.log(mid * 255) / math.log(mean)
+        # print(gamma)
+
+        img_gamma1 = np.power(img, gamma).clip(0, 255).astype(np.uint8)
+
+        return img_gamma1
+
     def display_current_results(self, visuals, epoch, save_result):
         """Display current results on visdom; save current results to an HTML file.
 
@@ -138,7 +153,7 @@ class Visualizer():
                 for label, image in visuals.items():
                     image_numpy = util.tensor2im(image)
                     label_html_row += '<td>%s</td>' % label
-                    images.append(image_numpy.transpose([2, 0, 1]))
+                    images.append(self.gamma_correction(image_numpy.transpose([2, 0, 1])))
                     idx += 1
                     if idx % ncols == 0:
                         label_html += '<tr>%s</tr>' % label_html_row
@@ -177,7 +192,7 @@ class Visualizer():
             table_row = [epoch]
             ims_dict = {}
             for label, image in visuals.items():
-                image_numpy = util.tensor2im(image)
+                image_numpy = self.gamma_correction(util.tensor2im(image))
                 wandb_image = wandb.Image(image_numpy)
                 table_row.append(wandb_image)
                 ims_dict[label] = wandb_image
