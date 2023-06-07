@@ -29,7 +29,7 @@ def copy_set(folder_names, set_label):
             filename = pic_A.split("/")[-1]
             if "-" in filename:
                 dst_filename = filename.split("-")[-1]
-            else
+            else:
                 dst_filename = filename.split("_")[-1]
 
             shutil.copy(pic_A, os.path.join(destination, "A", set_label, dst_filename))
