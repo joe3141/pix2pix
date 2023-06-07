@@ -17,15 +17,17 @@ train_mice = train_mice[:11]
 
 
 def copy_set(folder_names, set_label):
-    pics_A = sorted(glob.glob(os.path.join(data_root, folder_names[0], "C00", "*")),
-                    key=lambda x: x.split("/")[-1].split(".")[0])  # C00 C01 label
-    pics_B = sorted(glob.glob(os.path.join(data_root, folder_names[0], "C01", "*")),
-                    key=lambda x: x.split("/")[-1].split(".")[0])
 
-    print("Copying " + set_label)
-    for pic_A, pic_B in tqdm(zip(pics_A, pics_B)):
-        shutil.copy(pic_A, os.path.join(destination, "A", set_label))
-        shutil.copy(pic_B, os.path.join(destination, "B", set_label))
+    for folder in tqdm(folder_names):
+        pics_A = sorted(glob.glob(os.path.join(data_root, folder, "C00", "*")),
+                        key=lambda x: x.split("/")[-1].split(".")[0])  # C00 C01 label
+        pics_B = sorted(glob.glob(os.path.join(data_root, folder, "C01", "*")),
+                        key=lambda x: x.split("/")[-1].split(".")[0])
+
+        print("Copying " + set_label)
+        for pic_A, pic_B in zip(pics_A, pics_B):
+            shutil.copy(pic_A, os.path.join(destination, "A", set_label))
+            shutil.copy(pic_B, os.path.join(destination, "B", set_label))
 
 
 copy_set(train_mice, "train")
