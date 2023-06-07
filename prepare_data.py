@@ -27,8 +27,8 @@ def copy_set(folder_names, set_label):
         pics_B = sorted(glob.glob(os.path.join(data_root, folder, "C01", "*")),
                         key=lambda x: x.split("/")[-1].split(".")[0])
 
-        pics_C = sorted(pics_B = sorted(glob.glob(os.path.join(data_root, folder, "label", "*")),
-                                        key=lambda x: x.split("/")[-1].split(".")[0]))
+        pics_C = sorted(glob.glob(os.path.join(data_root, folder, "label", "*")),
+                                        key=lambda x: x.split("/")[-1].split(".")[0])
 
         for pic_A, pic_B, pic_C in zip(pics_A, pics_B, pics_C):
             dst_filename = f"{index}.tif"
@@ -37,7 +37,7 @@ def copy_set(folder_names, set_label):
             shutil.copy(pic_A, os.path.join(destination, "A", set_label, dst_filename))
             shutil.copy(pic_B, os.path.join(destination, "B", set_label, dst_filename))
             shutil.copy(pic_C, os.path.join(destination, "C", set_label, dst_filename_label))
-            
+
             index += 1
 
 
