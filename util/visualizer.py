@@ -65,7 +65,7 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
     for label, im_data in visuals.items():
         im = util.tensor2im(im_data)
         print(im.shape)
-        im = histogram_eq(im)
+        im = gamma_correction(im)
         unique, counts = np.unique(im, return_counts=True)
 
         print(np.asarray((unique, counts)).T)
