@@ -37,11 +37,13 @@ import numpy as np
 import cv2
 import imageio
 from collections import defaultdict
+from PIL import Image
 
 try:
     import wandb
 except ImportError:
     print('Warning: wandb package cannot be found. The option "--use_wandb" will result in error.')
+
 
 def histogram_eq(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -51,12 +53,14 @@ def histogram_eq(img):
 
     return equ
 
+
 def gen_bitmap(img):
     img = util.tensor2im(img)
     img = histogram_eq(img)
     img[img > 0] = 255
-    img = img.astype(np.bool)
+    img = img.astype(bool)
     return img
+
 
 if __name__ == '__main__':
     opt = TestOptions().parse()  # get test options
@@ -97,14 +101,16 @@ if __name__ == '__main__':
         visuals = model.get_current_visuals()  # get image results
         img_path = model.get_image_paths()     # get image paths
 
-        real_B = gen_bitmap(visuals["real_B"])
-        fake_B = gen_bitmap(visuals["fake_B"])
+        real_B = gen_bitmap(visuals["real_B"])[:, :, 0]
+        fake_B = gen_bitmap(visuals["fake_B"])[:, :, 0]
 
         intersection = np.logical_and(real_B, fake_B)
 
         base_label_path = "/home/elab/Documents/data_Youssef/paired_pix2pix/C/test/"
         label_path = os.path.join(base_label_path, img_path.split("/")[-1]) + "f"
         label = imageio.imread(label_path)
+        label = Image.fromarray(label)
+        label = label.resize((256, 256), Image.NEAREST)
         classes, counts = np.unique(label, return_counts=True)
         if len(classes) > 1:
             for category, count in zip(classes[1:], counts[1:]):
