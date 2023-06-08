@@ -28,7 +28,8 @@ def gamma_correction(img):
     gamma = math.log(mid * 255) / math.log(mean)
     # print(gamma)
 
-    img_gamma1 = np.power(img, gamma).clip(0, 255).astype(np.uint8)
+    # img_gamma1 = np.power(img, gamma).clip(0, 255).astype(np.uint8)
+    img_gamma1 = np.power(img, gamma).astype(np.uint8)
 
     return img_gamma1
 
