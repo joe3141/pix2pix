@@ -28,8 +28,7 @@ def gamma_correction(img):
     gamma = math.log(mid * 255) / math.log(mean)
     # print(gamma)
 
-    # img_gamma1 = np.power(img, gamma).clip(0, 255).astype(np.uint8)
-    img_gamma1 = np.power(img, gamma).astype(np.uint8)
+    img_gamma1 = np.power(img, gamma).clip(0, 255).astype(np.uint8)
 
     return img_gamma1
 
@@ -64,9 +63,10 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
     ims_dict = {}
 
     for label, im_data in visuals.items():
+        print(label)
         im = util.tensor2im(im_data)
         print(im.shape)
-        im = gamma_correction(im)
+        im = histogram_eq(im)
         unique, counts = np.unique(im, return_counts=True)
 
         print(np.asarray((unique, counts)).T)
