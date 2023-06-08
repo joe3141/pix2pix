@@ -32,12 +32,31 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
 from util import html
+from util import util, html
+import numpy as np
+import cv2
+import imageio
+from collections import defaultdict
 
 try:
     import wandb
 except ImportError:
     print('Warning: wandb package cannot be found. The option "--use_wandb" will result in error.')
 
+def histogram_eq(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    equ = cv2.equalizeHist(gray)
+    equ = np.tile(equ, (3, 1, 1))
+    equ = np.transpose(equ, (1, 2, 0))
+
+    return equ
+
+def gen_bitmap(img):
+    img = util.tensor2im(img)
+    img = histogram_eq(img)
+    img[img > 0] = 255
+    img = img.astype(np.bool)
+    return img
 
 if __name__ == '__main__':
     opt = TestOptions().parse()  # get test options
@@ -67,6 +86,9 @@ if __name__ == '__main__':
     # For [CycleGAN]: It should not affect CycleGAN as CycleGAN uses instancenorm without dropout.
     if opt.eval:
         model.eval()
+
+    recall_scores = defaultdict(int)
+    n = 0
     for i, data in enumerate(dataset):
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
@@ -74,7 +96,29 @@ if __name__ == '__main__':
         model.test()           # run inference
         visuals = model.get_current_visuals()  # get image results
         img_path = model.get_image_paths()     # get image paths
+
+        real_B = gen_bitmap(visuals["real_B"])
+        fake_B = gen_bitmap(visuals["fake_B"])
+
+        intersection = np.logical_and(real_B, fake_B)
+
+        base_label_path = "/home/elab/Documents/data_Youssef/paired_pix2pix/C/test/"
+        label_path = os.path.join(base_label_path, img_path.split("/")[-1]) + "f"
+        label = imageio.imread(label_path)
+        classes, counts = np.unique(label, return_counts=True)
+        if len(classes) > 1:
+            for category, count in zip(classes[1:], counts[1:]):
+                intersection_count = np.count_nonzero(intersection[label == category])
+                recall = float(intersection_count) / float(count)
+                recall_scores[category] += recall
+            n += 1
+
         if i % 5 == 0:  # save images to an HTML file
             print('processing (%04d)-th image... %s' % (i, img_path))
         save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
     webpage.save()  # save the HTML
+
+    for category in recall_scores.keys():
+        recall_scores[category] /= float(n)
+
+    print(recall_scores)
