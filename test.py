@@ -107,7 +107,7 @@ if __name__ == '__main__':
         intersection = np.logical_and(real_B, fake_B)
 
         base_label_path = "/home/elab/Documents/data_Youssef/paired_pix2pix/C/test/"
-        label_path = os.path.join(base_label_path, img_path.split("/")[-1]) + "f"
+        label_path = os.path.join(base_label_path, img_path[0].split("/")[-1]) + "f"
         label = imageio.imread(label_path)
         label = Image.fromarray(label)
         label = label.resize((256, 256), Image.NEAREST)
