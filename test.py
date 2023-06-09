@@ -91,8 +91,8 @@ if __name__ == '__main__':
     if opt.eval:
         model.eval()
 
-    recall_scores = defaultdict(int)
-    n = 0
+    recall_scores = defaultdict(float)
+    n = 0.0
     for i, data in enumerate(dataset):
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
@@ -110,14 +110,19 @@ if __name__ == '__main__':
         label_path = os.path.join(base_label_path, img_path[0].split("/")[-1]) + "f"
         label = imageio.imread(label_path)
         label = Image.fromarray(label)
-        label = label.resize((256, 256), Image.NEAREST)
+        label = np.array(label.resize((256, 256), Image.NEAREST))
+        #print(real_B.shape)
+        #print(fake_B.shape)
+        #print(label.shape)
         classes, counts = np.unique(label, return_counts=True)
         if len(classes) > 1:
             for category, count in zip(classes[1:], counts[1:]):
                 intersection_count = np.count_nonzero(intersection[label == category])
+                #print(intersection_count)
+                #exit()
                 recall = float(intersection_count) / float(count)
                 recall_scores[category] += recall
-            n += 1
+            n += 1.0
 
         if i % 5 == 0:  # save images to an HTML file
             print('processing (%04d)-th image... %s' % (i, img_path))
