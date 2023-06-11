@@ -2,6 +2,7 @@ import os
 from data.base_dataset import BaseDataset, get_params, get_transform
 from data.image_folder import make_dataset
 from PIL import Image
+import numpy as np
 
 
 class AlignedDataset(BaseDataset):
@@ -44,6 +45,13 @@ class AlignedDataset(BaseDataset):
         w2 = int(w / 2)
         A = AB.crop((0, 0, w2, h))
         B = AB.crop((w2, 0, w, h))
+
+        A, B = np.array(A), np.array(B)
+
+        A[A > 0] = 255
+        B[B > 0] = 255
+
+        A, B = Image.fromarray(A), Image.fromarray(B)
 
         # apply the same transform to both A and B
         transform_params = get_params(self.opt, A.size)
