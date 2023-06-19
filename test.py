@@ -161,3 +161,7 @@ if __name__ == '__main__':
         psnr_scores[category] /= category_sample_counts[category]
 
     print(recall_scores)
+    print(l1_scores)
+    print(l2_scores)
+    print(ssim_scores)
+    print(psnr_scores)
