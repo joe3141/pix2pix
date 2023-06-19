@@ -37,7 +37,7 @@ def histogram_eq(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     equ = cv2.equalizeHist(gray)
     equ = np.tile(equ, (3, 1, 1))
-    equ = np.transpose(equ, (1, 2, 0))
+#    equ = np.transpose(equ, (1, 2, 0))
 
     return equ
 
@@ -64,7 +64,7 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
 
     for label, im_data in visuals.items():
         im = util.tensor2im(im_data)
-        im = histogram_eq(im)
+        im = histogram_eq(im).transpose([1, 2, 0])
         image_name = '%s_%s.png' % (name, label)
         save_path = os.path.join(image_dir, image_name)
         util.save_image(im, save_path, aspect_ratio=aspect_ratio)
@@ -165,7 +165,8 @@ class Visualizer():
                 for label, image in visuals.items():
                     image_numpy = util.tensor2im(image)
                     label_html_row += '<td>%s</td>' % label
-                    images.append(histogram_eq(image_numpy.transpose([2, 0, 1])))
+#                    images.append(histogram_eq(image_numpy.transpose([2, 0, 1])))
+                    images.append(histogram_eq(image_numpy))
                     idx += 1
                     if idx % ncols == 0:
                         label_html += '<tr>%s</tr>' % label_html_row
@@ -205,7 +206,7 @@ class Visualizer():
             ims_dict = {}
             for label, image in visuals.items():
                 image_numpy = histogram_eq(util.tensor2im(image))
-                wandb_image = wandb.Image(image_numpy)
+                wandb_image = wandb.Image(image_numpy.transpose([1, 2, 0]))
                 table_row.append(wandb_image)
                 ims_dict[label] = wandb_image
             self.wandb_run.log(ims_dict)
