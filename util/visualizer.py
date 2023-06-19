@@ -37,7 +37,7 @@ def histogram_eq(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     equ = cv2.equalizeHist(gray)
     equ = np.tile(equ, (3, 1, 1))
-    equ = np.transpose(equ, (1, 2, 0))
+#    equ = np.transpose(equ, (1, 2, 0))
 
     return equ
 
