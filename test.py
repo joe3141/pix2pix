@@ -39,6 +39,9 @@ import imageio
 from collections import defaultdict
 from PIL import Image
 
+from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import peak_signal_noise_ratio as psnr
+
 try:
     import wandb
 except ImportError:
@@ -60,6 +63,14 @@ def gen_bitmap(img):
     img[img > 0] = 255
     img = img.astype(bool)
     return img
+
+
+def l1(a, b):
+    return np.sum(np.abs(a - b)) / np.prod(np.array(a.shape).astype(np.float))
+
+
+def l2(a, b):
+    return np.sum(np.square(a - b)) / np.prod(np.array(a.shape).astype(np.float))
 
 
 if __name__ == '__main__':
@@ -93,6 +104,10 @@ if __name__ == '__main__':
 
     recall_scores = defaultdict(float)
     category_sample_counts = defaultdict(float)
+    l1_scores = defaultdict(float)
+    l2_scores = defaultdict(float)
+    ssim_scores = defaultdict(float)
+    psnr_scores = defaultdict(float)
     for i, data in enumerate(dataset):
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
@@ -101,8 +116,10 @@ if __name__ == '__main__':
         visuals = model.get_current_visuals()  # get image results
         img_path = model.get_image_paths()     # get image paths
 
-        # real_B = gen_bitmap(visuals["real_B"])[:, :, 0]
-        fake_B = gen_bitmap(visuals["fake_B"])[:, :, 0]
+        real_B = visuals["real_B"][:, :, 0]
+        fake_B = visuals["fake_B"][:, :, 0]
+
+        fake_B_binary = gen_bitmap(fake_B)
 
         # intersection = np.logical_and(real_B, fake_B)
 
@@ -116,10 +133,19 @@ if __name__ == '__main__':
 
         if len(classes) > 1:
             for category, count in zip(classes[1:], counts[1:]):
-                intersection_count = np.count_nonzero(fake_B[label == category])
+                intersection_count = np.count_nonzero(fake_B_binary[label == category])
 
                 recall = float(intersection_count) / float(count)
                 recall_scores[category] += recall
+
+                mask = np.zeros_like(label)
+                mask[label == category] = 1.0
+
+                l1_scores[category] += l1(mask * fake_B, mask * real_B)
+                l2_scores[category] += l2(mask * fake_B, mask * real_B)
+                ssim_scores[category] += ssim(mask * fake_B, mask * real_B)
+                psnr_scores[category] += psnr(mask * fake_B, mask * real_B)
+
                 category_sample_counts[category] += 1.0
 
         if i % 5 == 0:  # save images to an HTML file
@@ -129,5 +155,9 @@ if __name__ == '__main__':
 
     for category in recall_scores.keys():
         recall_scores[category] /= category_sample_counts[category]
+        l1_scores[category] /= category_sample_counts[category]
+        l2_scores[category] /= category_sample_counts[category]
+        ssim_scores[category] /= category_sample_counts[category]
+        psnr_scores[category] /= category_sample_counts[category]
 
     print(recall_scores)
