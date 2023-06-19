@@ -92,7 +92,7 @@ if __name__ == '__main__':
         model.eval()
 
     recall_scores = defaultdict(float)
-    n = 0.0
+    category_sample_counts = defaultdict(float)
     for i, data in enumerate(dataset):
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
@@ -101,28 +101,26 @@ if __name__ == '__main__':
         visuals = model.get_current_visuals()  # get image results
         img_path = model.get_image_paths()     # get image paths
 
-        real_B = gen_bitmap(visuals["real_B"])[:, :, 0]
+        # real_B = gen_bitmap(visuals["real_B"])[:, :, 0]
         fake_B = gen_bitmap(visuals["fake_B"])[:, :, 0]
 
-        intersection = np.logical_and(real_B, fake_B)
+        # intersection = np.logical_and(real_B, fake_B)
 
         base_label_path = "/home/elab/Documents/data_Youssef/paired_pix2pix/C/test/"
         label_path = os.path.join(base_label_path, img_path[0].split("/")[-1]) + "f"
         label = imageio.imread(label_path)
         label = Image.fromarray(label)
         label = np.array(label.resize((256, 256), Image.NEAREST))
-        #print(real_B.shape)
-        #print(fake_B.shape)
-        #print(label.shape)
+
         classes, counts = np.unique(label, return_counts=True)
+
         if len(classes) > 1:
             for category, count in zip(classes[1:], counts[1:]):
-                intersection_count = np.count_nonzero(intersection[label == category])
-                #print(intersection_count)
-                #exit()
+                intersection_count = np.count_nonzero(fake_B[label == category])
+
                 recall = float(intersection_count) / float(count)
                 recall_scores[category] += recall
-            n += 1.0
+                category_sample_counts[category] += 1.0
 
         if i % 5 == 0:  # save images to an HTML file
             print('processing (%04d)-th image... %s' % (i, img_path))
@@ -130,6 +128,6 @@ if __name__ == '__main__':
     webpage.save()  # save the HTML
 
     for category in recall_scores.keys():
-        recall_scores[category] /= float(n)
+        recall_scores[category] /= category_sample_counts[category]
 
     print(recall_scores)
