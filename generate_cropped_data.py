@@ -42,7 +42,8 @@ def IsImageFG(image_in, foreground_threshold_value=15, percentage_thr=20):
 
 def process_file_set(files, dir_label, label):
     global n
-    for file in files:
+    print(f"Processing {dir_label}'s {label} set")
+    for file in tqdm(files):
         img = imageio.imread(file)
         for k, piece in enumerate(sliding_window_on_image(img, width, height, overlap=0)):
             image_crop, i_index, j_index = piece
