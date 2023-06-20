@@ -40,30 +40,42 @@ def IsImageFG(image_in, foreground_threshold_value=15, percentage_thr=0.2):
     return True
 
 
-def process_file_set(files, dir_label, label):
+def process_file_set(channel_files, label):
     global n
-    print(f"Processing {dir_label}'s {label} set")
-    for file in tqdm(files):
-        img = imageio.imread(file)
-        for k, piece in enumerate(sliding_window_on_image(img, width, height, overlap=0)):
-            image_crop, i_index, j_index = piece
-            image_crop = np.array(image_crop)
-            if IsImageFG(image_crop):
-                imageio.imsave(os.path.join(data_root, f"{dir_label}_c", label, f"{n}.tif"), image_crop)
+    a, b, c = channel_files
+    print(f"Processing {label} set")
+    for a_file, b_file, c_file in tqdm(zip(a, b, c)):
+        img_a = imageio.imread(a_file)
+        img_b = imageio.imread(b_file)
+        img_c = imageio.imread(c_file)
+        for piece_a, piece_b, piece_c in zip(sliding_window_on_image(img_a, width, height, overlap=0),
+                                             sliding_window_on_image(img_b, width, height, overlap=0),
+                                             sliding_window_on_image(img_c, width, height, overlap=0)):
+            image_crop_a, i_index, j_index = piece_a
+            image_crop_b, i_index, j_index = piece_b
+            image_crop_c, i_index, j_index = piece_c
+            image_crop_a = np.array(image_crop_a)
+            if IsImageFG(image_crop_a):
+                imageio.imsave(os.path.join(data_root, "A_c", label, f"{n}.tif"), image_crop_a)
+                imageio.imsave(os.path.join(data_root, "B_c", label, f"{n}.tif"), image_crop_b)
+                imageio.imsave(os.path.join(data_root, "C_c", label, f"{n}.tif"), image_crop_c)
                 n += 1
+                
+
+def get_channel_files(channel_label):
+    train_files = glob.glob(os.path.join(data_root, channel_label, "train", "*"))
+    val_files = glob.glob(os.path.join(data_root, channel_label, "val", "*"))
+    test_files = glob.glob(os.path.join(data_root, channel_label, "test", "*"))
+
+    return train_files, val_files, test_files
 
 
-def process_channel_dir(dir_label):
-    train_files = glob.glob(os.path.join(data_root, dir_label, "train", "*"))
-    val_files = glob.glob(os.path.join(data_root, dir_label, "val", "*"))
-    test_files = glob.glob(os.path.join(data_root, dir_label, "test", "*"))
+A_sets = get_channel_files("A")
+B_sets = get_channel_files("B")
+C_sets = get_channel_files("C")
 
-    process_file_set(train_files, dir_label, "train")
-    process_file_set(val_files, dir_label, "val")
-    process_file_set(test_files, dir_label, "test")
+process_file_set((A_sets[0], B_sets[0], C_sets[0]), "train")
+process_file_set((A_sets[1], B_sets[1], C_sets[1]), "val")
+process_file_set((A_sets[2], B_sets[2], C_sets[2]), "test")
 
-
-process_channel_dir("A")
-process_channel_dir("B")
-process_channel_dir("C")
 
