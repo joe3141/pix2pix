@@ -47,8 +47,9 @@ def process_file_set(files, dir_label, label):
         img = imageio.imread(file)
         for k, piece in enumerate(sliding_window_on_image(img, width, height, overlap=0)):
             image_crop, i_index, j_index = piece
+            image_crop = np.array(image_crop)
             if IsImageFG(image_crop):
-                imageio.imsave(os.path.join(data_root, f"{dir_label}_c", label, f"{n}.tif"))
+                imageio.imsave(os.path.join(data_root, f"{dir_label}_c", label, f"{n}.tif"), image_crop)
                 n += 1
 
 
