@@ -32,7 +32,7 @@ def sliding_window_on_image(image_in, height, width, overlap=0):
                    i, j]
 
 
-def IsImageFG(image_in, foreground_threshold_value=15, percentage_thr=20):
+def IsImageFG(image_in, foreground_threshold_value=15, percentage_thr=0.2):
     '''given an image and a pixel value threshold, compare if a required percentage
     of the image is larger than this threshold. If yes, the image is can be filtered as foreground'''
     if(np.sum(image_in>foreground_threshold_value)/(image_in.shape[0]*image_in.shape[1]))<percentage_thr:
