@@ -14,6 +14,10 @@ import importlib
 import torch.utils.data
 from data.base_dataset import BaseDataset
 
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
+
+
 
 def find_dataset_using_name(dataset_name):
     """Import the module "data/[dataset_name]_dataset.py".
