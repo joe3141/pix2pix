@@ -111,8 +111,8 @@ if __name__ == '__main__':
     ssim_scores = defaultdict(float)
     psnr_scores = defaultdict(float)
     for i, data in enumerate(dataset):
-        if i >= opt.num_test:  # only apply our model to opt.num_test images.
-            break
+        # if i >= opt.num_test:  # only apply our model to opt.num_test images.
+            # break
         model.set_input(data)  # unpack data from data loader
         model.test()           # run inference
         visuals = model.get_current_visuals()  # get image results
