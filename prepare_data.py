@@ -4,8 +4,8 @@ import shutil
 from tqdm import tqdm
 
 
-data_root = "/home/elab/Documents/data_Youssef/10x_ds_scans_orig_AIMOS/"
-destination = "/home/elab/Documents/data_Youssef/paired_pix2pix/"
+data_root = "/home/elab/projects/data/AIMOS_MICE_down_10x"
+destination = "/home/elab/projects/data/pix2pix_paired_data"
 
 mice = sorted(os.listdir(data_root))
 

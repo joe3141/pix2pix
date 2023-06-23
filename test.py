@@ -49,10 +49,12 @@ except ImportError:
 
 
 def histogram_eq(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    equ = cv2.equalizeHist(gray)
-    equ = np.tile(equ, (3, 1, 1))
-    equ = np.transpose(equ, (1, 2, 0))
+    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = img
+    equ = cv2.equalizeHist(np.squeeze(gray))
+    # equ = np.tile(equ, (3, 1, 1))
+    # equ = np.transpose(equ, (1, 2, 0))
+    equ = np.expand_dims(equ, 0)
 
     return equ
 
@@ -66,11 +68,11 @@ def gen_bitmap(img):
 
 
 def l1(a, b):
-    return np.sum(np.abs(a - b)) / np.prod(np.array(a.shape).astype(np.float))
+    return np.sum(np.abs(a - b)) / np.prod(np.array(a.shape).astype(np.float32))
 
 
 def l2(a, b):
-    return np.sum(np.square(a - b)) / np.prod(np.array(a.shape).astype(np.float))
+    return np.sum(np.square(a - b)) / np.prod(np.array(a.shape).astype(np.float32))
 
 
 if __name__ == '__main__':
@@ -116,18 +118,19 @@ if __name__ == '__main__':
         visuals = model.get_current_visuals()  # get image results
         img_path = model.get_image_paths()     # get image paths
 
-        real_B = visuals["real_B"][:, :, 0]
-        fake_B = visuals["fake_B"][:, :, 0]
+        real_B = util.tensor2im(visuals["real_B"])
+        fake_B = util.tensor2im(visuals["fake_B"])
 
         fake_B_binary = gen_bitmap(fake_B)
 
         # intersection = np.logical_and(real_B, fake_B)
 
-        base_label_path = "/home/elab/Documents/data_Youssef/paired_pix2pix/C/test/"
-        label_path = os.path.join(base_label_path, img_path[0].split("/")[-1]) + "f"
-        label = imageio.imread(label_path)
-        label = Image.fromarray(label)
-        label = np.array(label.resize((256, 256), Image.NEAREST))
+        base_label_path = "/home/elab/projects/data/pix2pix_paired_data/C_512/test"
+        label_path = os.path.join(base_label_path, img_path[0].split("/")[-1])
+        label = np.expand_dims(imageio.imread(label_path), 0)
+        # label = Image.fromarray(label)
+        # label = np.array(label.resize((256, 256), Image.NEAREST))
+
 
         classes, counts = np.unique(label, return_counts=True)
 
@@ -143,7 +146,7 @@ if __name__ == '__main__':
 
                 l1_scores[category] += l1(mask * fake_B, mask * real_B)
                 l2_scores[category] += l2(mask * fake_B, mask * real_B)
-                ssim_scores[category] += ssim(mask * fake_B, mask * real_B)
+                ssim_scores[category] += ssim(np.squeeze(mask) * np.squeeze(fake_B), np.squeeze(mask) * np.squeeze(real_B))
                 psnr_scores[category] += psnr(mask * fake_B, mask * real_B)
 
                 category_sample_counts[category] += 1.0

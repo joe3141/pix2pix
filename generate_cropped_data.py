@@ -7,11 +7,11 @@ from tqdm import tqdm
 import imageio
 
 
-data_root = "/home/elab/Documents/data_Youssef/paired_pix2pix/"
+data_root = "/home/elab/projects/data/pix2pix_paired_data/"
 
 n = 0
-width = 256
-height = 256
+width = 512
+height = 512
 
 
 def sliding_window_on_image(image_in, height, width, overlap=0):
@@ -56,9 +56,9 @@ def process_file_set(channel_files, label):
             image_crop_c, i_index, j_index = piece_c
             image_crop_a = np.array(image_crop_a)
             if IsImageFG(image_crop_a):
-                imageio.imsave(os.path.join(data_root, "A_c", label, f"{n}.tif"), image_crop_a)
-                imageio.imsave(os.path.join(data_root, "B_c", label, f"{n}.tif"), image_crop_b)
-                imageio.imsave(os.path.join(data_root, "C_c", label, f"{n}.tif"), image_crop_c)
+                imageio.imsave(os.path.join(data_root, f"A_{width}", label, f"{n}.tif"), image_crop_a)
+                imageio.imsave(os.path.join(data_root, f"B_{width}", label, f"{n}.tif"), image_crop_b)
+                imageio.imsave(os.path.join(data_root, f"C_{width}", label, f"{n}.tif"), image_crop_c)
                 n += 1
                 
 
@@ -73,6 +73,7 @@ def get_channel_files(channel_label):
 A_sets = get_channel_files("A")
 B_sets = get_channel_files("B")
 C_sets = get_channel_files("C")
+
 
 process_file_set((A_sets[0], B_sets[0], C_sets[0]), "train")
 process_file_set((A_sets[1], B_sets[1], C_sets[1]), "val")

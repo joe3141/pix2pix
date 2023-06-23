@@ -64,16 +64,19 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
 
     for label, im_data in visuals.items():
         im = util.tensor2im(im_data)
+        im = np.tile(im, (3, 1, 1)).transpose([1, 2, 0])
         im = histogram_eq(im).transpose([1, 2, 0])
-        image_name = '%s_%s.png' % (name, label)
-        save_path = os.path.join(image_dir, image_name)
-        util.save_image(im, save_path, aspect_ratio=aspect_ratio)
-        ims.append(image_name)
-        txts.append(label)
-        links.append(image_name)
+
+        # image_name = '%s_%s.png' % (name, label)
+        # save_path = os.path.join(image_dir, image_name)
+        # util.save_image(im, save_path, aspect_ratio=aspect_ratio)
+        # ims.append(image_name)
+        # txts.append(label)
+        # links.append(image_name)
+
         if use_wandb:
             ims_dict[label] = wandb.Image(im)
-    webpage.add_images(ims, txts, links, width=width)
+    # webpage.add_images(ims, txts, links, width=width)
     if use_wandb:
         wandb.log(ims_dict)
 
