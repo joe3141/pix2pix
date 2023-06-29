@@ -111,8 +111,8 @@ if __name__ == '__main__':
     ssim_scores = defaultdict(float)
     psnr_scores = defaultdict(float)
     for i, data in enumerate(dataset):
-        # if i >= opt.num_test:  # only apply our model to opt.num_test images.
-            # break
+#        if i >= opt.num_test:  # only apply our model to opt.num_test images.
+#            break
         model.set_input(data)  # unpack data from data loader
         model.test()           # run inference
         visuals = model.get_current_visuals()  # get image results
@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
                 l1_scores[category] += l1(mask * fake_B, mask * real_B)
                 l2_scores[category] += l2(mask * fake_B, mask * real_B)
-                ssim_scores[category] += ssim(np.squeeze(mask) * np.squeeze(fake_B), np.squeeze(mask) * np.squeeze(real_B))
+                ssim_scores[category] += ssim(np.squeeze(mask) * np.squeeze(fake_B), np.squeeze(mask) * np.squeeze(real_B), data_range=255)
                 psnr_scores[category] += psnr(mask * fake_B, mask * real_B)
 
                 category_sample_counts[category] += 1.0

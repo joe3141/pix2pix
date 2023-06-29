@@ -34,8 +34,9 @@ def gamma_correction(img):
 
 
 def histogram_eq(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    equ = cv2.equalizeHist(gray)
+    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = img.astype(np.uint8)
+    equ = cv2.equalizeHist(np.squeeze(gray))
     equ = np.tile(equ, (3, 1, 1))
 #    equ = np.transpose(equ, (1, 2, 0))
 
@@ -64,8 +65,8 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
 
     for label, im_data in visuals.items():
         im = util.tensor2im(im_data)
-        im = np.tile(im, (3, 1, 1)).transpose([1, 2, 0])
-        im = histogram_eq(im).transpose([1, 2, 0])
+        # im = np.tile(im, (3, 1, 1)).transpose([1, 2, 0])
+        # im = histogram_eq(im).transpose([1, 2, 0])
 
         # image_name = '%s_%s.png' % (name, label)
         # save_path = os.path.join(image_dir, image_name)
@@ -169,7 +170,8 @@ class Visualizer():
                     image_numpy = util.tensor2im(image)
                     label_html_row += '<td>%s</td>' % label
 #                    images.append(histogram_eq(image_numpy.transpose([2, 0, 1])))
-                    images.append(histogram_eq(image_numpy))
+                    # images.append(histogram_eq(image_numpy))
+                    images.append(image_numpy)
                     idx += 1
                     if idx % ncols == 0:
                         label_html += '<tr>%s</tr>' % label_html_row
@@ -208,8 +210,10 @@ class Visualizer():
             table_row = [epoch]
             ims_dict = {}
             for label, image in visuals.items():
-                image_numpy = histogram_eq(util.tensor2im(image))
-                wandb_image = wandb.Image(image_numpy.transpose([1, 2, 0]))
+                # image_numpy = histogram_eq(util.tensor2im(image))
+                image_numpy = util.tensor2im(image)
+                # wandb_image = wandb.Image(image_numpy.transpose([1, 2, 0]))
+                wandb_image = wandb.Image(image_numpy)
                 table_row.append(wandb_image)
                 ims_dict[label] = wandb_image
             self.wandb_run.log(ims_dict)
@@ -223,6 +227,8 @@ class Visualizer():
             # save images to the disk
             for label, image in visuals.items():
                 image_numpy = util.tensor2im(image)
+                # image_numpy = np.tile(image_numpy, (3, 1, 1))
+                # image_numpy = image_numpy.transpose([1, 2, 0])
                 img_path = os.path.join(self.img_dir, 'epoch%.3d_%s.png' % (epoch, label))
                 util.save_image(image_numpy, img_path)
 

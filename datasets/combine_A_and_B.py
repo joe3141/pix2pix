@@ -6,8 +6,8 @@ from multiprocessing import Pool
 
 
 def image_write(path_A, path_B, path_AB):
-    im_A = cv2.imread(path_A, 1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
-    im_B = cv2.imread(path_B, 1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
+    im_A = cv2.imread(path_A, -1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
+    im_B = cv2.imread(path_B, -1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
     im_AB = np.concatenate([im_A, im_B], 1)
     cv2.imwrite(path_AB, im_AB)
 
@@ -58,8 +58,8 @@ for sp in splits:
             if not args.no_multiprocessing:
                 pool.apply_async(image_write, args=(path_A, path_B, path_AB))
             else:
-                im_A = cv2.imread(path_A, 1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
-                im_B = cv2.imread(path_B, 1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
+                im_A = cv2.imread(path_A, -1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
+                im_B = cv2.imread(path_B, -1) # python2: cv2.CV_LOAD_IMAGE_COLOR; python3: cv2.IMREAD_COLOR
                 im_AB = np.concatenate([im_A, im_B], 1)
                 cv2.imwrite(path_AB, im_AB)
 if not args.no_multiprocessing:
