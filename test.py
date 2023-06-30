@@ -61,7 +61,7 @@ def histogram_eq(img):
 
 def gen_bitmap(img):
     img = util.tensor2im(img)
-    img = histogram_eq(img)
+#    img = histogram_eq(img)
     img[img > 0] = 255
     img = img.astype(bool)
     return img
@@ -73,6 +73,13 @@ def l1(a, b):
 
 def l2(a, b):
     return np.sum(np.square(a - b)) / np.prod(np.array(a.shape).astype(np.float32))
+
+
+def detorchify(img):
+    img = (img + 1.0) / 2.0
+    img = img.transpose((1, 2, 0))
+
+    return img
 
 
 if __name__ == '__main__':
@@ -118,8 +125,8 @@ if __name__ == '__main__':
         visuals = model.get_current_visuals()  # get image results
         img_path = model.get_image_paths()     # get image paths
 
-        real_B = util.tensor2im(visuals["real_B"])
-        fake_B = util.tensor2im(visuals["fake_B"])
+        real_B = np.squeeze(detorchify(util.tensor2im(visuals["real_B"], no_process=True)))
+        fake_B = np.squeeze(detorchify(util.tensor2im(visuals["fake_B"], no_process=True)))
 
         fake_B_binary = gen_bitmap(fake_B)
 
@@ -127,7 +134,7 @@ if __name__ == '__main__':
 
         base_label_path = "/home/elab/projects/data/pix2pix_paired_data/C_512/test"
         label_path = os.path.join(base_label_path, img_path[0].split("/")[-1])
-        label = np.expand_dims(imageio.imread(label_path), 0)
+        label = imageio.imread(label_path)
         # label = Image.fromarray(label)
         # label = np.array(label.resize((256, 256), Image.NEAREST))
 
@@ -142,12 +149,15 @@ if __name__ == '__main__':
                 recall_scores[category] += recall
 
                 mask = np.zeros_like(label)
+                mask = mask.astype(np.float32)
                 mask[label == category] = 1.0
 
                 l1_scores[category] += l1(mask * fake_B, mask * real_B)
                 l2_scores[category] += l2(mask * fake_B, mask * real_B)
-                ssim_scores[category] += ssim(np.squeeze(mask) * np.squeeze(fake_B), np.squeeze(mask) * np.squeeze(real_B), data_range=255)
-                psnr_scores[category] += psnr(mask * fake_B, mask * real_B)
+                ssim_scores[category] += ssim(np.squeeze(mask) * np.squeeze(fake_B),
+                                              np.squeeze(mask) * np.squeeze(real_B), data_range=65535)
+
+                psnr_scores[category] += psnr(mask * fake_B, mask * real_B, data_range=65535)
 
                 category_sample_counts[category] += 1.0
 

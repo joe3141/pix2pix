@@ -60,14 +60,23 @@ def __make_power_2(img, base):
     return img.resize((w, h), method)
 
 
+def detorchify(img):
+    img = (img + 1.0) / 2.0
+    img = img.transpose((1, 2, 0))
+
+    return img
+
+
 def prepare_img(img):
-    img = img.convert('RGB')  # will be removed
+    # img = img.convert('RGB')  # will be removed
 
     transform_list = []
 
     # expected behavior is that it should return the image as it is?
     # This was previously checked in torch's source code.
-    transform_list.append(transforms.Grayscale(1))  # might be removed
+    # transform_list.append(transforms.Grayscale(1))  # might be removed
+    transform_list.append(transforms.Lambda(lambda img: np.array(img).astype(np.float32)))
+    transform_list.append(transforms.Lambda(lambda img: img / float(np.max(img))))
     transform_list.append(transforms.Resize((512, 512), Image.BICUBIC))
     transform_list.append(transforms.Lambda(lambda _img: __make_power_2(_img, base=4)))  # will be removed
     transform_list += [transforms.ToTensor()]
@@ -96,21 +105,30 @@ if __name__ == '__main__':
         model.eval()
 
     data_root = "inputs/"
-    files = sorted(glob.glob(os.path.join(data_root, "*")))
+    tmp_data_root = "/home/elab/projects/data/AIMOS_MICE_down_10x/Con1/C01/"
+    files = sorted(glob.glob(os.path.join(data_root, "*")),
+                   key=lambda x: int(x.split("/")[-1].split(".")[0].split("_")[1][1:]))
+    tmp_files = sorted(glob.glob(os.path.join(tmp_data_root, "*")),
+                       key=lambda x: int(x.split("/")[-1].split(".")[0].split("_")[1][1:]))
+
     imgs = [Image.open(file) for file in files]
     tensors = [prepare_img(img) for img in imgs]
+    vals = [imageio.imread(img).max() for img in tmp_files]
 
-    for path, data in tqdm(zip(files, tensors)):
+    for path, data, val in tqdm(zip(files, tensors, vals)):
         input_object = {"A": data, "B": data, "A_paths": path, "B_paths": path}
         model.set_input(input_object)  # unpack data from data loader
         model.test()           # run inference
 
-        invTrans = transforms.Compose([transforms.Normalize(mean=[0.,], std=[1 / 0.5,]),
-                                       transforms.Normalize(mean=[-0.5,], std=[1.,]),
-                                       ])
+#        invTrans = transforms.Compose([transforms.Normalize(mean=[0.,], std=[1 / 0.5,]),
+#                                       transforms.Normalize(mean=[-0.5,], std=[1.,]),
+#                                       ])
         output = model.fake_B
-        output = invTrans(output)
+        # output = invTrans(output)
+        output_img = util.tensor2im(output, no_process=True)
+        output_img = detorchify(output_img)
+        output_img *= val
 
-        output_img = util.tensor2im(output)
+
         output_img = output_img.astype(np.uint16)
         imageio.imsave(os.path.join("outputs", path.split("/")[-1]), np.squeeze(output_img))

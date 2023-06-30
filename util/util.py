@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-def tensor2im(input_image, imtype=np.uint8):
+def tensor2im(input_image, imtype=np.uint8, no_process=False):
     """"Converts a Tensor array into a numpy image array.
 
     Parameters:
@@ -23,29 +23,33 @@ def tensor2im(input_image, imtype=np.uint8):
         else:
             return input_image
         image_numpy = image_tensor[0].cpu().float().numpy()  # convert it into a numpy array
-        # image_numpy = (image_numpy + 1.0) / 2.0 * 255.0
-        image_numpy = (image_numpy + 1.0) / 2.0
-        img = image_numpy.transpose((1, 2, 0))
-        img_a = img.copy()
-        top_clip_value = np.percentile(img, 95)
-        img[img > top_clip_value] = top_clip_value
-        top_clip_value = np.percentile(img, 3)
-        img[img < top_clip_value] = top_clip_value
-        img = cv2.normalize(img, img_a, 0.0, 255.0, cv2.NORM_MINMAX)
-        img = img.astype(np.uint8)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        img = clahe.apply(img)
-        # img = cv2.equalizeHist(img)
+        if not no_process:
 
-        img = np.dstack((img, img, img))
+            # image_numpy = (image_numpy + 1.0) / 2.0 * 255.0
+            image_numpy = (image_numpy + 1.0) / 2.0
+            img = image_numpy.transpose((1, 2, 0))
+            img_a = img.copy()
+            top_clip_value = np.percentile(img, 95)
+            img[img > top_clip_value] = top_clip_value
+            top_clip_value = np.percentile(img, 3)
+            img[img < top_clip_value] = top_clip_value
+            img = cv2.normalize(img, img_a, 0.0, 255.0, cv2.NORM_MINMAX)
+            img = img.astype(np.uint8)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            img = clahe.apply(img)
+            # img = cv2.equalizeHist(img)
 
-        # if image_numpy.shape[0] == 1:  # grayscale to RGB
-        #    image_numpy = np.tile(image_numpy, (3, 1, 1))
-        # print(image_numpy.shape)
-        # image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0  # post-processing: tranpose and scaling
+            img = np.dstack((img, img, img))
+
+            image_numpy = img
+
+            # if image_numpy.shape[0] == 1:  # grayscale to RGB
+            #    image_numpy = np.tile(image_numpy, (3, 1, 1))
+            # print(image_numpy.shape)
+            # image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0  # post-processing: tranpose and scaling
     else:  # if it is a numpy array, do nothing
         image_numpy = input_image
-    return img
+    return image_numpy
 
 
 def diagnose_network(net, name='network'):
