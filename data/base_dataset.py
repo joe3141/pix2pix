@@ -8,6 +8,7 @@ import torch.utils.data as data
 from PIL import Image
 import torchvision.transforms as transforms
 from abc import ABC, abstractmethod
+import cv2
 
 
 class BaseDataset(data.Dataset, ABC):
@@ -93,7 +94,7 @@ def get_transform(opt, params=None, grayscale=False, method=transforms.Interpola
             transform_list.append(transforms.Lambda(lambda img: __crop(img, params['crop_pos'], opt.crop_size)))
 
     if opt.preprocess == 'none':
-        transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base=4, method=method)))
+        transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base=256, method=method)))
 
     if not opt.no_flip:
         if params is None:
@@ -103,7 +104,7 @@ def get_transform(opt, params=None, grayscale=False, method=transforms.Interpola
 
     if convert:
         transform_list.append(transforms.Lambda(lambda img: np.array(img).astype(np.float32)))  # uint16 => float32
-        transform_list.append(transforms.Lambda(lambda img: img / float(np.max(img))))
+        transform_list.append(transforms.Lambda(lambda img: img / max(float(np.max(img)), 1.0)))
         transform_list += [transforms.ToTensor()]
         if grayscale:
             transform_list += [transforms.Normalize((0.5,), (0.5,))]
@@ -129,7 +130,13 @@ def __make_power_2(img, base, method=transforms.InterpolationMode.BICUBIC):
         return img
 
     __print_size_warning(ow, oh, w, h)
-    return img.resize((w, h), method)
+    _img = np.array(img)
+    # _img = cv2.resize(_img, (w, h), interpolation=cv2.INTER_CUBIC)
+    _img = cv2.resize(_img, (768, 1280), interpolation=cv2.INTER_CUBIC)
+    img = Image.fromarray(_img)
+
+    # return img.resize((w, h), Image.NEAREST)
+    return img
 
 
 def __scale_width(img, target_size, crop_size, method=transforms.InterpolationMode.BICUBIC):

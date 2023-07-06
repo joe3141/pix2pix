@@ -3,6 +3,9 @@ import os
 import sys
 import ntpath
 import time
+
+import torch
+
 from . import util, html
 from subprocess import Popen, PIPE
 
@@ -43,6 +46,22 @@ def histogram_eq(img):
     return equ
 
 
+def calc_percentual_diff(img1, img2):
+    # print(img1.dtype)
+    # print(img2.dtype)
+    diff = np.abs(img1 - img2)
+    # unq, counts = np.unique(diff, return_counts=True)
+    # print(np.asarray((unq, counts)).T)
+    # exit()
+    # diff [diff == 220] = 255
+    #diff[diff  < 255] = 0
+    # diff = diff / np.max(diff) * 255
+    # print(np.unique(diff))
+    return diff
+    # return np.abs(img1 - img2) / ((img1 + img2) / 2.0) * 100.0
+    # return torch.abs(img1 - img2)
+
+
 def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_wandb=False):
     """Save images to the disk.
 
@@ -64,7 +83,8 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
     ims_dict = {}
 
     for label, im_data in visuals.items():
-        im = util.tensor2im(im_data)
+        if not "diff" in label:
+            im = util.tensor2im(im_data)
         # im = np.tile(im, (3, 1, 1)).transpose([1, 2, 0])
         # im = histogram_eq(im).transpose([1, 2, 0])
 
@@ -75,9 +95,16 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
         # txts.append(label)
         # links.append(image_name)
 
-        if use_wandb:
-            ims_dict[label] = wandb.Image(im)
+        # if use_wandb:
+        ims_dict[label] = im
+
     # webpage.add_images(ims, txts, links, width=width)
+
+    ims_dict["diff_B_B"] = calc_percentual_diff(ims_dict["real_B"], ims_dict["fake_B"])
+    ims_dict["diff_B_A"] = calc_percentual_diff(ims_dict["real_A"], ims_dict["fake_B"])
+    for label in ims_dict.keys():
+        ims_dict[label] = wandb.Image(ims_dict[label])
+
     if use_wandb:
         wandb.log(ims_dict)
 
