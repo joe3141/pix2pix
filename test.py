@@ -27,6 +27,9 @@ See training and test tips at: https://github.com/junyanz/pytorch-CycleGAN-and-p
 See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/qa.md
 """
 import os
+
+import torch
+
 from options.test_options import TestOptions
 from data import create_dataset
 from models import create_model
@@ -61,7 +64,7 @@ def histogram_eq(img):
 
 def gen_bitmap(img):
     img = util.tensor2im(img)
-#    img = histogram_eq(img)
+    #    img = histogram_eq(img)
     img[img > 0] = 255
     img = img.astype(bool)
     return img
@@ -85,22 +88,24 @@ def detorchify(img):
 if __name__ == '__main__':
     opt = TestOptions().parse()  # get test options
     # hard-code some parameters for test
-    opt.num_threads = 0   # test code only supports num_threads = 0
-    opt.batch_size = 1    # test code only supports batch_size = 1
+    opt.num_threads = 0  # test code only supports num_threads = 0
+    opt.batch_size = 1  # test code only supports batch_size = 1
     opt.serial_batches = True  # disable data shuffling; comment this line if results on randomly chosen images are needed.
-    opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
-    opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
+    opt.no_flip = True  # no flip; comment this line if results on flipped images are needed.
+    opt.display_id = -1  # no visdom display; the test code saves the results to a HTML file.
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
-    model = create_model(opt)      # create a model given opt.model and other options
-    model.setup(opt)               # regular setup: load and print networks; create schedulers
+    model = create_model(opt)  # create a model given opt.model and other options
+    model.setup(opt)  # regular setup: load and print networks; create schedulers
 
     # initialize logger
     if opt.use_wandb:
-        wandb_run = wandb.init(project=opt.wandb_project_name, name=opt.name, config=opt) if not wandb.run else wandb.run
+        wandb_run = wandb.init(project=opt.wandb_project_name, name=opt.name,
+                               config=opt) if not wandb.run else wandb.run
         wandb_run._label(repo='CycleGAN-and-pix2pix')
 
     # create a website
-    web_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))  # define the website directory
+    web_dir = os.path.join(opt.results_dir, opt.name,
+                           '{}_{}'.format(opt.phase, opt.epoch))  # define the website directory
     if opt.load_iter > 0:  # load_iter is 0 by default
         web_dir = '{:s}_iter{:d}'.format(web_dir, opt.load_iter)
     print('creating web directory', web_dir)
@@ -117,30 +122,43 @@ if __name__ == '__main__':
     l2_scores = defaultdict(float)
     ssim_scores = defaultdict(float)
     psnr_scores = defaultdict(float)
+    image_mean_l1 = 0.0
+    image_mean_l2 = 0.0
+    image_mean_ssim = 0.0
+    image_mean_psnr = 0.0
+    n_ = 0.0
     for i, data in enumerate(dataset):
-#        if i >= opt.num_test:  # only apply our model to opt.num_test images.
-#            break
+        if i >= opt.num_test:  # only apply our model to opt.num_test images.
+            break
         model.set_input(data)  # unpack data from data loader
-        model.test()           # run inference
+        model.test()  # run inference
         visuals = model.get_current_visuals()  # get image results
-        img_path = model.get_image_paths()     # get image paths
+        img_path = model.get_image_paths()  # get image paths
 
-        real_B = np.squeeze(detorchify(util.tensor2im(visuals["real_B"], no_process=True)))
-        fake_B = np.squeeze(detorchify(util.tensor2im(visuals["fake_B"], no_process=True)))
+        real_B = np.squeeze(util.tensor2im(visuals["real_B"], no_process=True))
+        fake_B = np.squeeze(util.tensor2im(visuals["fake_B"], no_process=True))
 
-        fake_B_binary = gen_bitmap(fake_B)
+        fake_B_binary = gen_bitmap(np.copy(fake_B))
 
         # intersection = np.logical_and(real_B, fake_B)
 
-        base_label_path = "/home/elab/projects/data/pix2pix_paired_data/C_512/test"
-        label_path = os.path.join(base_label_path, img_path[0].split("/")[-1])
-        label = imageio.imread(label_path)
+        if opt.dataset_mode == "aligned":
+            base_label_path = "/home/elab/projects/data/pix2pix_paired_data/C_512/test"
+            label_path = os.path.join(base_label_path, img_path[0].split("/")[-1])
+            label = imageio.imread(label_path)
+        else:
+            label_path = data['A_paths'][0].replace("C00", "label")
+            label = imageio.imread(label_path)
         # label = Image.fromarray(label)
         # label = np.array(label.resize((256, 256), Image.NEAREST))
 
-
         classes, counts = np.unique(label, return_counts=True)
-
+        n_ += 1
+        image_mean_l1 += l1(fake_B, real_B)
+        image_mean_l2 += l2(fake_B, real_B)
+        range = float(max(np.max(fake_B), np.max(real_B)) - min(np.min(fake_B), np.min(real_B)))
+        image_mean_ssim += ssim(fake_B, real_B, data_range=range)
+        image_mean_psnr += psnr(fake_B, real_B, data_range=range)
         if len(classes) > 1:
             for category, count in zip(classes[1:], counts[1:]):
                 intersection_count = np.count_nonzero(fake_B_binary[label == category])
@@ -154,16 +172,21 @@ if __name__ == '__main__':
 
                 l1_scores[category] += l1(mask * fake_B, mask * real_B)
                 l2_scores[category] += l2(mask * fake_B, mask * real_B)
+                range = float(max(np.max(np.squeeze(mask) * np.squeeze(fake_B)), np.max(np.squeeze(mask) *
+                np.squeeze(real_B))) - min(np.min(np.squeeze(mask) * np.squeeze(fake_B)), np.min(np.squeeze(mask)
+                                                                                                 * np.squeeze(real_B))))
                 ssim_scores[category] += ssim(np.squeeze(mask) * np.squeeze(fake_B),
-                                              np.squeeze(mask) * np.squeeze(real_B), data_range=65535)
+                                              np.squeeze(mask) * np.squeeze(real_B), data_range=range)
 
-                psnr_scores[category] += psnr(mask * fake_B, mask * real_B, data_range=65535)
+                psnr_scores[category] += psnr(mask * fake_B, mask * real_B, data_range=range)
 
                 category_sample_counts[category] += 1.0
 
         if i % 5 == 0:  # save images to an HTML file
             print('processing (%04d)-th image... %s' % (i, img_path))
-        save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
+
+        save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize,
+                    use_wandb=opt.use_wandb)
     webpage.save()  # save the HTML
 
     for category in recall_scores.keys():
@@ -173,8 +196,18 @@ if __name__ == '__main__':
         ssim_scores[category] /= category_sample_counts[category]
         psnr_scores[category] /= category_sample_counts[category]
 
+    image_mean_l1 /= n_
+    image_mean_l2 /= n_
+    image_mean_ssim /= n_
+    image_mean_psnr /= n_
+
     print(recall_scores)
     print(l1_scores)
     print(l2_scores)
     print(ssim_scores)
     print(psnr_scores)
+
+    print(image_mean_l1)
+    print(image_mean_l2)
+    print(image_mean_ssim)
+    print(image_mean_psnr)

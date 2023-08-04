@@ -5,6 +5,7 @@ import ntpath
 import time
 
 import torch
+from skimage.metrics import structural_similarity
 
 from . import util, html
 from subprocess import Popen, PIPE
@@ -22,6 +23,77 @@ if sys.version_info[0] == 2:
 else:
     VisdomExceptionBase = ConnectionError
 
+
+def gen_diff_img(a, b):
+
+    def tmp(img):
+        img_a = img.copy()
+        top_clip_value = np.percentile(img, 95)
+        img[img > top_clip_value] = top_clip_value
+        top_clip_value = np.percentile(img, 3)
+        img[img < top_clip_value] = top_clip_value
+        img = cv2.normalize(img, img_a, 0.0, 255.0, cv2.NORM_MINMAX)
+        img = img.astype(np.uint8)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        img = clahe.apply(img)
+        # img = cv2.equalizeHist(img)
+
+        # img = np.dstack((img, img, img))
+
+        return img
+
+    import matplotlib.pyplot as plt
+
+    # (score, grad, diff) = structural_similarity(np.squeeze(a), np.squeeze(b), full=True, gradient=True, data_range=65535)
+    # a = tmp(a)
+    # b = tmp(b)
+    range = float(max(np.max(a), np.max(b)) - min(np.min(a), np.min(b)))
+
+    (score, diff) = structural_similarity(np.squeeze(a), np.squeeze(b), full=True, data_range=range)
+    # diff = 1 - diff
+    # print(diff.shape)
+    # print(np.unique(diff))
+    # diff = ((diff / np.max(diff)) + 1.0) / 2.0
+    diff = np.abs(a-b)
+    diff /= np.max(diff)
+    diff *= 100.0
+    # diff = (diff * 255).astype("uint8")
+    diff = diff.astype("uint8")
+    diff[diff <= 20] = 0
+    diff[np.logical_and(diff > 20, diff <= 40)] = int(0.2 * 255)
+    diff[np.logical_and(diff > 40, diff <= 60)] = int(0.4 * 255)
+    diff[np.logical_and(diff > 60, diff <= 80)] = int(0.6 * 255)
+    diff[diff > 80] = int(0.8 * 255)
+
+    # thresh = cv2.threshold(diff, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+    # thresh = np.zeros_like(diff)
+    # thresh[diff > 250] = 255
+    # thresh[diff <= 250] = 0
+
+    # contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # contours = contours[0] if len(contours) == 2 else contours[1]
+
+    mask = np.zeros(a.shape, dtype='uint8')
+    filled_after = b.copy()
+
+    # b -= np.average(b)
+    # b += np.average(a)
+    # b[b > 1e-2] -= np.average(b)
+    # b[b > 1e-2] += np.average(a)
+    # b *= 10
+    # plt.figure("a")
+    # plt.imshow(a)
+    #
+    # plt.figure("b")
+    # plt.imshow(b)
+    #
+    # plt.figure("diff")
+    # plt.imshow(diff)
+
+    # plt.show()
+
+    # exit()
+    return diff
 
 def gamma_correction(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -82,28 +154,48 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
     ims, txts, links = [], [], []
     ims_dict = {}
 
+    # real_B_numpy = (util.tensor2im(visuals["real_B"], no_process=True) * 65535).astype(np.uint16)
+    # fake_B_numpy = (util.tensor2im(visuals["fake_B"], no_process=True) * 65535).astype(np.uint16)
+    # real_A_numpy = (util.tensor2im(visuals["real_A"], no_process=True) * 65535).astype(np.uint16)
+    real_B_numpy = util.tensor2im(visuals["real_B"], no_process=True)
+    fake_B_numpy = util.tensor2im(visuals["fake_B"], no_process=True)
+    real_A_numpy = util.tensor2im(visuals["real_A"], no_process=True)
+    diff_B_B = gen_diff_img(real_B_numpy, fake_B_numpy)
+    diff_B_A = gen_diff_img(real_A_numpy, fake_B_numpy)
+
+
+    image_name = '%s_%s.png' % (name, "diff_B_B")
+    save_path = os.path.join(image_dir, image_name)
+    util.save_image(np.squeeze(np.array([diff_B_B, diff_B_B, diff_B_B])).transpose((1, 2, 0)), save_path, aspect_ratio=aspect_ratio)
+    ims.append(image_name)
+    txts.append("diff_B_B")
+    links.append(image_name)
+
+    image_name = '%s_%s.png' % (name, "diff_B_A")
+    save_path = os.path.join(image_dir, image_name)
+    util.save_image(np.squeeze(np.array([diff_B_A, diff_B_A, diff_B_A])).transpose((1, 2, 0)), save_path, aspect_ratio=aspect_ratio)
+    ims.append(image_name)
+    txts.append("diff_B_A")
+    links.append(image_name)
+
+    if use_wandb:
+        ims_dict["diff_B_B"] = wandb.Image(diff_B_B)
+        ims_dict["diff_B_A"] = wandb.Image(diff_B_A)
+
     for label, im_data in visuals.items():
-        if not "diff" in label:
-            im = util.tensor2im(im_data)
-        # im = np.tile(im, (3, 1, 1)).transpose([1, 2, 0])
-        # im = histogram_eq(im).transpose([1, 2, 0])
+        im = util.tensor2im(im_data)
 
-        # image_name = '%s_%s.png' % (name, label)
-        # save_path = os.path.join(image_dir, image_name)
-        # util.save_image(im, save_path, aspect_ratio=aspect_ratio)
-        # ims.append(image_name)
-        # txts.append(label)
-        # links.append(image_name)
+        image_name = '%s_%s.png' % (name, label)
+        save_path = os.path.join(image_dir, image_name)
+        util.save_image(im, save_path, aspect_ratio=aspect_ratio)
+        ims.append(image_name)
+        txts.append(label)
+        links.append(image_name)
 
-        # if use_wandb:
-        ims_dict[label] = im
+        if use_wandb:
+            ims_dict[label] = wandb.Image(im)
 
-    # webpage.add_images(ims, txts, links, width=width)
-
-    ims_dict["diff_B_B"] = calc_percentual_diff(ims_dict["real_B"], ims_dict["fake_B"])
-    ims_dict["diff_B_A"] = calc_percentual_diff(ims_dict["real_A"], ims_dict["fake_B"])
-    for label in ims_dict.keys():
-        ims_dict[label] = wandb.Image(ims_dict[label])
+    webpage.add_images(ims, txts, links, width=width)
 
     if use_wandb:
         wandb.log(ims_dict)

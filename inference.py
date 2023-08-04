@@ -36,6 +36,9 @@ from PIL import Image
 import imageio
 import torchvision.transforms as transforms
 from tqdm import tqdm
+import cv2
+
+mouse_max  = 40657.0
 
 
 def __print_size_warning(ow, oh, w, h):
@@ -75,10 +78,10 @@ def prepare_img(img):
     # expected behavior is that it should return the image as it is?
     # This was previously checked in torch's source code.
     # transform_list.append(transforms.Grayscale(1))  # might be removed
-    transform_list.append(transforms.Lambda(lambda img: np.array(img).astype(np.float32)))
-    transform_list.append(transforms.Lambda(lambda img: img / float(np.max(img))))
-    transform_list.append(transforms.Resize((512, 512), Image.BICUBIC))
-    transform_list.append(transforms.Lambda(lambda _img: __make_power_2(_img, base=4)))  # will be removed
+    # transform_list.append(transforms.Resize((768, 1280), Image.BICUBIC))
+    # transform_list.append(transforms.Lambda(lambda _img: __make_power_2(_img, base=4)))  # will be removed
+    transform_list.append(transforms.Lambda(lambda x: np.array(x).astype(np.float32)))
+    transform_list.append(transforms.Lambda(lambda x: x / mouse_max))
     transform_list += [transforms.ToTensor()]
     transform_list += [transforms.Normalize((0.5,), (0.5,))]
 
@@ -105,17 +108,20 @@ if __name__ == '__main__':
         model.eval()
 
     data_root = "inputs/"
-    tmp_data_root = "/home/elab/projects/data/AIMOS_MICE_down_10x/Con1/C01/"
+    # files = sorted(glob.glob(os.path.join(data_root, "*")),
+    #                key=lambda x: int(x.split("/")[-1].split(".")[0].split("-")[1][1:]))
+
+    # lysm sorting
     files = sorted(glob.glob(os.path.join(data_root, "*")),
-                   key=lambda x: int(x.split("/")[-1].split(".")[0].split("_")[1][1:]))
-    tmp_files = sorted(glob.glob(os.path.join(tmp_data_root, "*")),
-                       key=lambda x: int(x.split("/")[-1].split(".")[0].split("_")[1][1:]))
+                   key=lambda x: int(x.split("/")[-1].split(".")[0].split("_")[-2][1:]))
 
-    imgs = [Image.open(file) for file in files]
+    imgs = [imageio.imread(file) for file in files]
+    orig_size = imgs[0].shape
+    print(orig_size)
+    imgs = [Image.fromarray(cv2.resize(img, (768, 1280), interpolation=cv2.INTER_CUBIC)) for img in imgs]
     tensors = [prepare_img(img) for img in imgs]
-    vals = [imageio.imread(img).max() for img in tmp_files]
 
-    for path, data, val in tqdm(zip(files, tensors, vals)):
+    for path, data in tqdm(zip(files, tensors)):
         input_object = {"A": data, "B": data, "A_paths": path, "B_paths": path}
         model.set_input(input_object)  # unpack data from data loader
         model.test()           # run inference
@@ -126,9 +132,7 @@ if __name__ == '__main__':
         output = model.fake_B
         # output = invTrans(output)
         output_img = util.tensor2im(output, no_process=True)
-        output_img = detorchify(output_img)
-        output_img *= val
-
-
-        output_img = output_img.astype(np.uint16)
+        output_img = cv2.resize(output_img, (orig_size[1], orig_size[0]), interpolation=cv2.INTER_CUBIC)
+        # print(np.unique(output_img))
+        # output_img = output_img.astype(np.uint16)
         imageio.imsave(os.path.join("outputs", path.split("/")[-1]), np.squeeze(output_img))
