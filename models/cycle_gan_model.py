@@ -4,6 +4,8 @@ from util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
 
+from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
+
 
 class CycleGANModel(BaseModel):
     """
@@ -166,7 +168,11 @@ class CycleGANModel(BaseModel):
             self.loss_idt_B = 0
 
         # GAN loss D_A(G_A(A))
-        self.loss_G_A = self.criterionGAN(self.netD_A(self.fake_B), True)
+        self.criterionL1 = torch.nn.L1Loss()
+        self.criterionSSIM = MS_SSIM(win_size=11, win_sigma=1.5, data_range=1.0, size_average=True, channel=1)
+        self.loss_G_L1 = ((1 - self.criterionSSIM((self.fake_B + 1.0) / 2.0, (self.real_B + 1.0) / 2.0)) + self.
+                          criterionL1(self.fake_B, self.real_B))
+        self.loss_G_A = self.criterionGAN(self.netD_A(self.fake_B), True) + self.loss_G_L1
         # GAN loss D_B(G_B(B))
         self.loss_G_B = self.criterionGAN(self.netD_B(self.fake_A), True)
         # Forward cycle loss || G_B(G_A(A)) - A||
