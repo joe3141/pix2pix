@@ -500,27 +500,33 @@ class UnetSkipConnectionBlock(nn.Module):
         downnorm = norm_layer(inner_nc)
         uprelu = nn.ReLU(True)
         upnorm = norm_layer(outer_nc)
+        upsample = nn.Upsample(scale_factor=2)
+
 
         if outermost:
-            upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
-                                        kernel_size=4, stride=2,
-                                        padding=1)
+
+            # upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
+            #                             kernel_size=4, stride=2,
+            #                             padding=1)
+            conv = nn.Conv2d(inner_nc * 2, outer_nc, kernel_size=3, stride=1, padding='same')
             down = [downconv]
-            up = [uprelu, upconv, nn.Tanh()]
+            up = [uprelu, upsample, conv, nn.Tanh()]
             model = down + [submodule] + up
         elif innermost:
-            upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
-                                        kernel_size=4, stride=2,
-                                        padding=1, bias=use_bias)
+            # upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
+            #                             kernel_size=4, stride=2,
+            #                             padding=1, bias=use_bias)
+            conv = nn.Conv2d(inner_nc, outer_nc, kernel_size=3, stride=1, padding='same', bias=use_bias)
             down = [downrelu, downconv]
-            up = [uprelu, upconv, upnorm]
+            up = [uprelu, upsample, conv, upnorm]
             model = down + up
         else:
-            upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
-                                        kernel_size=4, stride=2,
-                                        padding=1, bias=use_bias)
+            # upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
+            #                             kernel_size=4, stride=2,
+            #                             padding=1, bias=use_bias)
+            conv = nn.Conv2d(inner_nc * 2, outer_nc, kernel_size=3, stride=1, padding='same', bias=use_bias)
             down = [downrelu, downconv, downnorm]
-            up = [uprelu, upconv, upnorm]
+            up = [uprelu, upsample, conv, upnorm]
 
             if use_dropout:
                 model = down + [submodule] + up + [nn.Dropout(0.5)]
