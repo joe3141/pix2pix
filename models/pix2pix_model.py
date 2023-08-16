@@ -117,24 +117,27 @@ class Pix2PixModel(BaseModel):
         pred_real = self.netD(real_AB)
 
         # GAN feature matching loss
-        self.loss_G_GAN_Feat = 0
+        self.loss_G_GAN_Feat = 0.0
 
-        feat_weights = 4.0 / (self.opt.n_layers_D + 1)
+        # feat_weights = 4.0 / 9.0
         for j in range(len(pred_fake)-1):
-            self.loss_G_GAN_Feat += feat_weights * \
-                self.criterionL1(pred_fake[j][0], pred_real[j][0].detach()) * 10.0
+            self.loss_G_GAN_Feat += self.criterionL1(pred_fake[j][0], pred_real[j][0].detach())
 
 
         # Second, G(A) = B
         # self.loss_G_L1 = self.criterionL1(self.fake_B, self.real_B) * self.opt.lambda_L1
-        self.loss_G_L1 = ((1 - self.criterionSSIM((self.fake_B + 1.0) / 2.0, (self.real_B + 1.0) / 2.0)) + self.
-                          criterionL1(self.fake_B, self.real_B)) * self.opt.lambda_L1
+        # self.loss_G_L1 = (0.7 * (1 - self.criterionSSIM((self.fake_B + 1.0) / 2.0, (self.real_B + 1.0) / 2.0)) + 0.3 * self.
+        #                   criterionL1(self.fake_B, self.real_B)) * self.opt.lambda_L1
+
+        self.loss_G_L1 = (0.7 * (
+                    1 - self.criterionSSIM((self.fake_B + 1.0) / 2.0, (self.real_B + 1.0) / 2.0)) + 0.3 * self.
+                          criterionL1(self.fake_B, self.real_B))
 
         # self.loss_G_L1 = 1 - self.criterionSSIM((self.fake_B + 1.0) / 2.0, (self.real_B + 1.0) / 2.0)
 
         # combine loss and calculate gradients
-        self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_GAN_Feat
-        # self.loss_G = self.loss_G_L1
+        self.loss_G = 0.49 * self.loss_G_GAN + 0.3 * self.loss_G_L1 + 0.2 * self.loss_G_GAN_Feat
+        # self.loss_G = self.loss_G_GAN
         self.loss_G.backward()
 
     def optimize_parameters(self):

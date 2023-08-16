@@ -640,9 +640,9 @@ class PixelDiscriminator(nn.Module):
 #             norm_layer(ndf * 4),
             nn.LeakyReLU(0.2, True)]]
 
-        sequence2 += [[nn.Conv2d(ndf * 4, ndf * 4, kernel_size=3, stride=1, padding="same", bias=use_bias, dilation=8),
-#             # norm_layer(ndf * 4),
-            nn.LeakyReLU(0.2, True)]]
+#         sequence2 += [[nn.Conv2d(ndf * 4, ndf * 4, kernel_size=3, stride=1, padding="same", bias=use_bias, dilation=8),
+# #             # norm_layer(ndf * 4),
+#             nn.LeakyReLU(0.2, True)]]
 
         sequence3 = [[nn.Conv2d(ndf * 8, ndf * 4, kernel_size=1, stride=1, padding="same", bias=use_bias),
             nn.LeakyReLU(0.2, True)]]
@@ -725,10 +725,10 @@ class PixelDiscriminator(nn.Module):
         if self.getIntermFeat:
             first = None
             res = [input]
-            for n in range(10):
+            for n in range(9):
                 model = getattr(self, "model" + str(n))
                 x = res[-1]
-                if n == 7:
+                if n == 6:
                     x = torch.cat([first, x], dim=1)
                 y = model(x)
                 res.append(y)
