@@ -430,18 +430,22 @@ def stack_of_tiffs_to_nifti(folder_in, path_out, name_out='volume.nii.gz'):
     '''given a folder of images, stack them into a 3D volume'''
 
     images_in = sorted(os.listdir(folder_in))
-    image_for_size = cv2.imread(folder_in + images_in[0], 2)
+    image_for_size = cv2.imread(os.path.join(folder_in, images_in[0]), 2)
 
     # volume = np.zeros((image_for_size.shape[0], image_for_size.shape[1], len(images_in)), dtype=np.uint16)
     volume = np.zeros((image_for_size.shape[0], image_for_size.shape[1], len(images_in)), dtype=np.float32)
 
     for index, image in tqdm(enumerate(images_in)):
-        volume[:, :, index] = cv2.imread(folder_in + image, 2)
+        volume[:, :, index] = cv2.imread(os.path.join(folder_in, image), 2)
 
     writeNifti(path_out + name_out, volume)
 
 
-stack_of_tiffs_to_nifti("outputs/", "./")
+input_dir = "/home/elab/projects/data/LNP-mice/unpacked_PI/"
+output_dir = "/home/elab/projects/data/LNP-mice/Downsampled_norm_PI/"
+
+for mouse in os.listdir(input_dir):
+    stack_of_tiffs_to_nifti(os.path.join(input_dir, mouse), output_dir, mouse + ".nii.gz")
 
 
 

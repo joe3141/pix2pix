@@ -166,14 +166,14 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
 
     image_name = '%s_%s.png' % (name, "diff_B_B")
     save_path = os.path.join(image_dir, image_name)
-    util.save_image(np.squeeze(np.array([diff_B_B, diff_B_B, diff_B_B])).transpose((1, 2, 0)), save_path, aspect_ratio=aspect_ratio)
+    # util.save_image(np.squeeze(np.array([diff_B_B, diff_B_B, diff_B_B])).transpose((1, 2, 0)), save_path, aspect_ratio=aspect_ratio)
     ims.append(image_name)
     txts.append("diff_B_B")
     links.append(image_name)
 
     image_name = '%s_%s.png' % (name, "diff_B_A")
     save_path = os.path.join(image_dir, image_name)
-    util.save_image(np.squeeze(np.array([diff_B_A, diff_B_A, diff_B_A])).transpose((1, 2, 0)), save_path, aspect_ratio=aspect_ratio)
+    # util.save_image(np.squeeze(np.array([diff_B_A, diff_B_A, diff_B_A])).transpose((1, 2, 0)), save_path, aspect_ratio=aspect_ratio)
     ims.append(image_name)
     txts.append("diff_B_A")
     links.append(image_name)
@@ -187,13 +187,19 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_w
 
         image_name = '%s_%s.png' % (name, label)
         save_path = os.path.join(image_dir, image_name)
-        util.save_image(im, save_path, aspect_ratio=aspect_ratio)
+        # util.save_image(im, save_path, aspect_ratio=aspect_ratio)
         ims.append(image_name)
         txts.append(label)
         links.append(image_name)
 
         if use_wandb:
             ims_dict[label] = wandb.Image(im)
+
+    for label, im_data in visuals.items():
+        im = util.tensor2im(im_data, hist_eq=False)
+
+        if use_wandb:
+            ims_dict[label+"hsv"] = wandb.Image(im)
 
     webpage.add_images(ims, txts, links, width=width)
 

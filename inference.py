@@ -33,12 +33,12 @@ from util import util
 import glob
 import numpy as np
 from PIL import Image
-import imageio
+import imageio.v2 as imageio
 import torchvision.transforms as transforms
 from tqdm import tqdm
 import cv2
 
-mouse_max  = 40657.0
+mouse_max  = 65535.0
 
 
 def __print_size_warning(ow, oh, w, h):
@@ -90,6 +90,32 @@ def prepare_img(img):
     return _transforms(img).unsqueeze(0)
 
 
+def dir2tensors(dir):
+    # Aimos 10x 16 mice sorting
+    # files = sorted(glob.glob(os.path.join(data_root, "*")),
+    #                key=lambda x: int(x.split("/")[-1].split(".")[0].split("-")[1][1:]))
+
+    # lysm sorting
+    # files = sorted(glob.glob(os.path.join(data_root, "*")),
+    #                key=lambda x: int(x.split("/")[-1].split(".")[0].split("_")[-2][1:]))
+
+    # #.tif sorting
+    # files = sorted(glob.glob(os.path.join(dir, "*")),
+    #                key=lambda x: int(x.split("/")[-1].split(".")[0]))
+
+    # lnp sorting
+    files = sorted(glob.glob(os.path.join(dir, "*")), key=lambda x: int(x.split("/")[-1].split(".")[0].split("_")[1]))
+
+    imgs = [imageio.imread(file) for file in files]
+    orig_size = imgs[0].shape
+    print(orig_size)
+    imgs = [Image.fromarray(cv2.resize(img, (768, 1280), interpolation=cv2.INTER_CUBIC)) for img in imgs]
+    # imgs = [Image.fromarray(img) for img in imgs]
+    tensors = [prepare_img(img) for img in imgs]
+
+    return tensors, files
+
+
 if __name__ == '__main__':
     opt = TestOptions().parse()  # get test options
     # hard-code some parameters for test
@@ -107,32 +133,29 @@ if __name__ == '__main__':
     if opt.eval:
         model.eval()
 
-    data_root = "inputs/"
-    # files = sorted(glob.glob(os.path.join(data_root, "*")),
-    #                key=lambda x: int(x.split("/")[-1].split(".")[0].split("-")[1][1:]))
+    data_root = "/home/elab/projects/data/LNP-mice/unpacked_norm"
+    output_dir = "/home/elab/projects/data/LNP-mice/unpacked_PI"
 
-    # lysm sorting
-    files = sorted(glob.glob(os.path.join(data_root, "*")),
-                   key=lambda x: int(x.split("/")[-1].split(".")[0].split("_")[-2][1:]))
+    for mouse in os.listdir(data_root):
 
-    imgs = [imageio.imread(file) for file in files]
-    orig_size = imgs[0].shape
-    print(orig_size)
-    imgs = [Image.fromarray(cv2.resize(img, (768, 1280), interpolation=cv2.INTER_CUBIC)) for img in imgs]
-    tensors = [prepare_img(img) for img in imgs]
+        mouse_output_dir = os.path.join(output_dir, mouse)
+        if not os.path.exists(mouse_output_dir):
+            os.makedirs(mouse_output_dir)
 
-    for path, data in tqdm(zip(files, tensors)):
-        input_object = {"A": data, "B": data, "A_paths": path, "B_paths": path}
-        model.set_input(input_object)  # unpack data from data loader
-        model.test()           # run inference
+        tensors, files = dir2tensors(os.path.join(data_root, mouse))
 
-#        invTrans = transforms.Compose([transforms.Normalize(mean=[0.,], std=[1 / 0.5,]),
-#                                       transforms.Normalize(mean=[-0.5,], std=[1.,]),
-#                                       ])
-        output = model.fake_B
-        # output = invTrans(output)
-        output_img = util.tensor2im(output, no_process=True)
-        output_img = cv2.resize(output_img, (orig_size[1], orig_size[0]), interpolation=cv2.INTER_CUBIC)
-        # print(np.unique(output_img))
-        # output_img = output_img.astype(np.uint16)
-        imageio.imsave(os.path.join("outputs", path.split("/")[-1]), np.squeeze(output_img))
+        for path, data in tqdm(zip(files, tensors)):
+            input_object = {"A": data, "B": data, "A_paths": path, "B_paths": path}
+            model.set_input(input_object)  # unpack data from data loader
+            model.test()           # run inference
+
+    #        invTrans = transforms.Compose([transforms.Normalize(mean=[0.,], std=[1 / 0.5,]),
+    #                                       transforms.Normalize(mean=[-0.5,], std=[1.,]),
+    #                                       ])
+            output = model.fake_B
+            # output = invTrans(output)
+            output_img = util.tensor2im(output, no_process=True)
+            # output_img = cv2.resize(output_img, (orig_size[1], orig_size[0]), interpolation=cv2.INTER_CUBIC)
+            # print(np.unique(output_img))
+            # output_img = output_img.astype(np.uint16)
+            imageio.imsave(os.path.join(mouse_output_dir, path.split("/")[-1]), np.squeeze(output_img))

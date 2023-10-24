@@ -10,10 +10,52 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-def tensor2im(input_image, imtype=np.uint8, no_process=False):
+def to_uint8(img):
+    img = cv2.normalize(img, None, 0.0, 255.0, cv2.NORM_MINMAX)
+    img = np.uint8(img)
+
+    return img
+
+def clip(img):
+    # top_clip_value = np.percentile(img, 95)
+    # print(top_clip_value)
+    # img[img > top_clip_value] = top_clip_value
+    top_clip_value = np.percentile(img, 20)
+    # print(top_clip_value)
+    img[img < top_clip_value] = 0.0
+
+    return img
+
+
+def get_hsv(img):
+    cmap = plt.get_cmap("hsv")
+    hsv = cmap(img)[:, :, 0, :3]
+
+    # hsv = to_uint8(hsv)
+    # img_yuv = cv2.cvtColor(hsv, cv2.COLOR_BGR2YUV)
+    # img_yuv[:, :, 0] = cv2.equalizeHist(img_yuv[:, :, 0])
+    #
+    # hsv = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
+
+    return hsv
+
+
+def norm_and_histeq(img):
+    img = to_uint8(img)
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    # img = clahe.apply(img)
+
+    img = cv2.equalizeHist(img)
+
+    return img
+
+
+def tensor2im(input_image, imtype=np.uint8, no_process=False, hist_eq=True):
     """"Converts a Tensor array into a numpy image array.
 
     Parameters:
+        hist_eq: (bool)      --  Alters between histogram equalization or hsv image.
+        no_process: (bool)   --  Whether to process the image for visualization purposes
         input_image (tensor) --  the input image tensor array
         imtype (type)        --  the desired type of the converted numpy array
     """
@@ -24,29 +66,16 @@ def tensor2im(input_image, imtype=np.uint8, no_process=False):
             return input_image
         image_numpy = image_tensor[0].cpu().float().numpy()  # convert it into a numpy array
         if not no_process:
-
-            # image_numpy = (image_numpy + 1.0) / 2.0 * 255.0
             image_numpy = (image_numpy + 1.0) / 2.0
             img = image_numpy.transpose((1, 2, 0))
-            img_a = img.copy()
-            top_clip_value = np.percentile(img, 95)
-            img[img > top_clip_value] = top_clip_value
-            top_clip_value = np.percentile(img, 3)
-            img[img < top_clip_value] = top_clip_value
-            img = cv2.normalize(img, img_a, 0.0, 255.0, cv2.NORM_MINMAX)
-            img = img.astype(np.uint8)
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-            img = clahe.apply(img)
-            # img = cv2.equalizeHist(img)
+            img = clip(img)
 
-            img = np.dstack((img, img, img))
+            if hist_eq:
+                img = norm_and_histeq(img)
+            else:
+                img = get_hsv(img)
 
             image_numpy = img
-
-            # if image_numpy.shape[0] == 1:  # grayscale to RGB
-            #    image_numpy = np.tile(image_numpy, (3, 1, 1))
-            # print(image_numpy.shape)
-            # image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0  # post-processing: tranpose and scaling
 
         else:
             image_numpy = (image_numpy + 1.0) / 2.0
